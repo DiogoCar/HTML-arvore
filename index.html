@@ -35,6 +35,20 @@
   .legend{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;padding:6px 20px 24px;color:var(--muted);font-size:.85rem}
   .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;background:var(--c);margin-right:6px}
   #info{text-align:center;color:var(--muted);padding:0 20px 28px;min-height:2.4em}
+  .modal{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;
+         padding:20px;background:rgba(5,9,20,.7)}
+  .modal.open{display:flex}
+  .modal-box{position:relative;width:min(420px,100%);background:var(--panel);border:2px solid var(--c,var(--line));
+             border-radius:16px;padding:26px 22px 22px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .modal-box .ico{font-size:2.4rem;line-height:1}
+  .modal-box h2{margin:8px 0 2px;font-size:1.4rem}
+  .modal-box .year{color:var(--c,var(--line));font-weight:700}
+  .modal-box h3{margin:20px 0 6px;font-size:.8rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .modal-box .os{font-size:1.15rem;font-weight:700}
+  .modal-box .det{margin:10px 0 0;color:var(--muted);font-size:.95rem;line-height:1.5}
+  .modal-close{position:absolute;top:8px;right:10px;width:34px;height:34px;border:0;border-radius:50%;
+               background:transparent;color:var(--muted);font-size:1.5rem;line-height:1;cursor:pointer}
+  .modal-close:hover,.modal-close:focus-visible{color:var(--text);background:rgba(255,255,255,.1);outline:none}
   @media (prefers-reduced-motion:reduce){.node{transition:none}}
 </style>
 </head>
@@ -89,7 +103,48 @@
 
 <div id="info"></div>
 
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="modal-box" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <button class="modal-close" id="mClose" aria-label="Fechar">&times;</button>
+    <div class="ico" id="mIco"></div>
+    <h2 id="mTitle"></h2>
+    <div class="year" id="mYear"></div>
+    <h3>Sistema Operacional</h3>
+    <p class="os" id="mOs">a analisar</p>
+    <p class="det" id="mDet" style="display:none"></p>
+  </div>
+</div>
+
 <script>
+  // ===================== INFORMAÇÕES DOS CONSOLES =====================
+  // Edite aqui: cada console tem seu bloco.
+  //   so       -> Sistema Operacional (aparece na janela)
+  //   detalhes -> texto extra opcional (deixe '' para não mostrar)
+  const INFO = {
+    ps1:       { so: 'Sem SO', detalhes: '*operava com um firmware' },
+    psone:     { so: 'Sem SO', detalhes: '*operava com um firmware' },
+
+    ps2:       { so: 'Sem SO/Linux', detalhes: '*Console possuia Kit Linux' },
+    ps2slim:   { so: 'Sem SO/Linux', detalhes: '*Console possuia Kit Linux'  },
+
+    psp:       { so: 'a analisar', detalhes: '' },
+    psp2000:   { so: 'a analisar', detalhes: '' },
+    psp3000:   { so: 'a analisar', detalhes: '' },
+    pspgo:     { so: 'a analisar', detalhes: '' },
+    pspstreet: { so: 'a analisar', detalhes: '' },
+
+    ps3:       { so: 'CellOS', detalhes: '*possui raízes e elementos derivados dos projetos FreeBSD e NetBSD.' },
+    ps3slim:   { so: 'CellOS', detalhes: '*possui raízes e elementos derivados dos projetos FreeBSD e NetBSD.'},
+    ps3super:  { so: 'CellOS', detalhes: '*possui raízes e elementos derivados dos projetos FreeBSD e NetBSD.' },
+
+    ps4:       { so: 'Orbis OS', detalhes: '*baseada na versão 9.0 do FreeBSD' },
+    ps4slim:   { so: 'Orbis OS', detalhes: '*baseada na versão 9.0 do FreeBSD'},
+    ps4pro:    { so: 'Orbis OS', detalhes: '*baseada na versão 9.0 do FreeBSD'},
+    psvr:      { so: 'a analisar', detalhes: '' },
+    vita:      { so: 'a analisar', detalhes: '' }
+  };
+  // =====================================================================
+
   // [pai, filho]
   const links = [
     ['ps1','psone'], ['ps1','ps2'], ['ps2','ps2slim'], ['ps2','psp'],
@@ -170,6 +225,34 @@
     n.addEventListener('mouseleave', reset);
     n.addEventListener('blur', reset);
   });
+
+  // janela com o Sistema Operacional
+  const modal = $('modal');
+  let lastNode = null;
+
+  function openModal(n){
+    lastNode = n;
+    const info = INFO[n.id] || {};
+    $('mOs').textContent = info.so || 'a analisar';
+    $('mDet').textContent = info.detalhes || '';
+    $('mDet').style.display = info.detalhes ? '' : 'none';
+    $('mIco').textContent = n.querySelector('.ico').textContent;
+    $('mTitle').textContent = names[n.id];
+    $('mYear').textContent = n.querySelector('span').textContent;
+    $('modalBox').style.setProperty('--c', getComputedStyle(n).getPropertyValue('--c'));
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden','false');
+    $('mClose').focus();
+  }
+  function closeModal(){
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden','true');
+    if (lastNode) lastNode.focus();
+  }
+  document.querySelectorAll('.node').forEach(n => n.addEventListener('click', ()=>openModal(n)));
+  $('mClose').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('open')) closeModal(); });
 
   window.addEventListener('resize', draw);
   window.addEventListener('load', draw);
