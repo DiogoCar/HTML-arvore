@@ -49,6 +49,9 @@
   .modal-close{position:absolute;top:8px;right:10px;width:34px;height:34px;border:0;border-radius:50%;
                background:transparent;color:var(--muted);font-size:1.5rem;line-height:1;cursor:pointer}
   .modal-close:hover,.modal-close:focus-visible{color:var(--text);background:rgba(255,255,255,.1);outline:none}
+  .row.six{grid-template-columns:repeat(6,1fr)}
+  #tree2{position:relative;margin:0 auto;min-width:1180px;max-width:1300px}
+  .sec{margin-top:24px;border-top:1px solid var(--line)}
   @media (prefers-reduced-motion:reduce){.node{transition:none}}
 </style>
 </head>
@@ -103,6 +106,19 @@
 
 <div id="info"></div>
 
+<header class="sec">
+  <h1>Árvore genealógica da Nintendo</h1>
+  <p>Consoles de mesa, portáteis e híbridos. Toque ou passe o mouse para destacar a linhagem.</p>
+</header>
+<div class="legend">
+  <span class="g1"><i></i>Game &amp; Watch</span><span class="g5"><i></i>Consoles de mesa</span>
+  <span class="g2"><i></i>Portáteis</span><span class="g4"><i></i>Família Switch</span>
+</div>
+<div class="scroll">
+<div id="tree2"><svg id="lines2"></svg></div>
+</div>
+<div id="info2"></div>
+
 <div class="modal" id="modal" aria-hidden="true">
   <div class="modal-box" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <button class="modal-close" id="mClose" aria-label="Fechar">&times;</button>
@@ -152,79 +168,135 @@
     ['psp','ps3'], ['ps3','ps3slim'], ['ps3','ps3super'], ['ps3','ps4'], ['ps3','vita'],
     ['ps4','ps4slim'], ['ps4','ps4pro'], ['ps4','psvr']
   ];
-  const tree = document.getElementById('tree');
-  const svg = document.getElementById('lines');
   const $ = id => document.getElementById(id);
+  const names = {};
 
-  function pos(el){
-    const t = tree.getBoundingClientRect(), r = el.getBoundingClientRect();
-    return {x:r.left-t.left, y:r.top-t.top, w:r.width, h:r.height};
-  }
-
-  function draw(){
-    svg.innerHTML = '';
-    links.forEach(([a,b])=>{
-      const p = pos($(a)), c = pos($(b));
-      let d;
-      if (Math.abs(p.y - c.y) < 5){            // mesma linha: liga as laterais
-        const left = c.x < p.x;
-        const x1 = left ? p.x : p.x+p.w, x2 = left ? c.x+c.w : c.x;
-        const y = p.y + p.h/2;
-        d = `M${x1} ${y} L${x2} ${y}`;
-      } else {                                  // linha abaixo: cotovelo
-        const x1 = p.x+p.w/2, y1 = p.y+p.h, x2 = c.x+c.w/2, y2 = c.y;
-        const my = y1 + (y2-y1)/2;
-        d = `M${x1} ${y1} L${x1} ${my} L${x2} ${my} L${x2} ${y2}`;
-      }
-      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-      path.setAttribute('d', d);
-      path.dataset.a = a; path.dataset.b = b;
-      svg.appendChild(path);
+  // ===================== ÁRVORE DA NINTENDO =====================
+  // [id, linha, coluna, grupo, ícone, nome, ano, sistema operacional, detalhes]
+  const FW = '*operava com um firmware', HW = '*operava direto no hardware', HZ = '*sistema da família Horizon';
+  const NIN = [
+    ['gw',1,1,'g1','⌚','Game & Watch','1980','Sem SO','a analisar'],
+    ['ctv',1,5,'g5','📺','Color TV-Game','1977','Sem SO','*hardware dedicado'],
+    ['fc',2,5,'g5','🎮','Famicom','1983','Sem SO',HW],
+    ['nes',2,6,'g5','🎮','NES','1985','Sem SO',HW],
+    ['gb',2,3,'g2','📱','Game Boy','1989','Sem SO',HW],
+    ['gbp',3,2,'g2','📱','Game Boy Pocket','1996','Sem SO',HW],
+    ['gbc',3,3,'g2','📱','Game Boy Color','1998','Sem SO',HW],
+    ['snes',3,5,'g5','🎮','Super Famicom / SNES','1990','Sem SO',HW],
+    ['gba',4,3,'g2','📱','Game Boy Advance','2001','Sem SO',HW],
+    ['n64',4,5,'g5','🎮','Nintendo 64','1996','Sem SO',HW],
+    ['vb',4,6,'g5','🥽','Virtual Boy','1995','Sem SO',HW],
+    ['gbasp',5,2,'g2','📱','GBA SP','2003','Sem SO',HW],
+    ['ds',5,3,'g2','📱','Nintendo DS','2004','Sem SO',HW],
+    ['gbm',5,4,'g2','📱','Game Boy Micro','2005','Sem SO',HW],
+    ['gc',5,5,'g5','🎮','GameCube','2001','Sem SO',FW],
+    ['dslite',6,3,'g2','📱','DS Lite','2006','Sem SO',HW],
+    ['wii',6,5,'g5','🎮','Wii','2006','IOS','*sistema próprio rodando em um processador ARM auxiliar'],
+    ['dsi',7,3,'g2','📱','DSi','2008','Sem SO',HW],
+    ['wiiu',7,5,'g5','🎮','Wii U','2012','Cafe OS',''],
+    ['wiimini',7,6,'g5','🎮','Wii Mini','2017','IOS',''],
+    ['dsixl',8,2,'g2','📱','DSi XL','2009','Sem SO',HW],
+    ['3ds',8,3,'g2','📱','Nintendo 3DS','2011','Horizon (3DS)',HZ],
+    ['3dsxl',9,2,'g2','📱','3DS XL','2012','Horizon (3DS)',HZ],
+    ['2ds',9,3,'g2','📱','Nintendo 2DS','2013','Horizon (3DS)',HZ],
+    ['new3ds',9,4,'g2','📱','New 3DS','2014','Horizon (3DS)',HZ],
+    ['sw',9,5,'g4','🎮','Nintendo Switch','2017','Horizon OS',HZ],
+    ['gwm',10,1,'g1','⌚','Game & Watch: Super Mario Bros.','2020','a analisar',''],
+    ['new2dsxl',10,3,'g2','📱','New 2DS XL','2017','Horizon (3DS)',HZ],
+    ['new3dsxl',10,4,'g2','📱','New 3DS XL','2014','Horizon (3DS)',HZ],
+    ['swlite',10,5,'g4','🎮','Switch Lite','2019','Horizon OS',HZ],
+    ['swoled',10,6,'g4','🎮','Switch OLED','2021','Horizon OS',HZ],
+    ['gwz',11,1,'g1','⌚','Game & Watch: Zelda','2020','a analisar',''],
+    ['sw2',11,6,'g4','🎮','Nintendo Switch 2','2025','Horizon OS','*baseado no sistema do Switch']
+  ];
+  const NLINKS = [
+    ['ctv','fc'],['fc','nes'],['fc','snes'],['snes','n64'],['snes','vb'],['n64','gc'],['gc','wii'],
+    ['wii','wiiu'],['wii','wiimini'],['wiiu','sw'],['3ds','sw'],['sw','swlite'],['sw','swoled'],['swoled','sw2'],
+    ['gw','gb'],['gw','gwm'],['gwm','gwz'],['gb','gbp'],['gb','gbc'],['gbc','gba'],['gba','gbasp'],['gba','ds'],
+    ['gba','gbm'],['ds','dslite'],['dslite','dsi'],['dsi','dsixl'],['dsi','3ds'],['3ds','3dsxl'],['3ds','2ds'],
+    ['3ds','new3ds'],['2ds','new2dsxl'],['new3ds','new3dsxl']
+  ];
+  (function(){
+    const t = $('tree2'), rows = {};
+    NIN.forEach(([id,r,c,g,ico,nm,yr,so,det])=>{
+      INFO[id] = { so, detalhes: det };
+      if(!rows[r]){ rows[r] = document.createElement('div'); rows[r].className = 'row six'; t.appendChild(rows[r]); }
+      const n = document.createElement('div');
+      n.className = 'node ' + g; n.id = id; n.tabIndex = 0; n.style.gridColumn = c;
+      n.innerHTML = '<div class="ico">'+ico+'</div><b>'+nm+'</b><span>'+yr+'</span>';
+      rows[r].appendChild(n);
     });
-  }
+  })();
 
-  // linhagem: ancestrais + descendentes
-  function lineage(id){
-    const set = new Set([id]);
-    let ch = true;
-    while(ch){ ch = false;
+  // ===================== LÓGICA DAS ÁRVORES =====================
+  function mkTree(treeId, svgId, infoId, links){
+    const tree = $(treeId), svg = $(svgId), info = $(infoId);
+    const nodes = [...tree.querySelectorAll('.node')];
+    nodes.forEach(n => names[n.id] = n.querySelector('b').textContent);
+
+    function pos(el){
+      const t = tree.getBoundingClientRect(), r = el.getBoundingClientRect();
+      return {x:r.left-t.left, y:r.top-t.top, w:r.width, h:r.height};
+    }
+    function draw(){
+      svg.innerHTML = '';
       links.forEach(([a,b])=>{
-        if (set.has(b) && !set.has(a)){ set.add(a); ch = true; }
+        const p = pos($(a)), c = pos($(b));
+        let d;
+        if (Math.abs(p.y - c.y) < 5){
+          const left = c.x < p.x;
+          const x1 = left ? p.x : p.x+p.w, x2 = left ? c.x+c.w : c.x, y = p.y + p.h/2;
+          d = `M${x1} ${y} L${x2} ${y}`;
+        } else {
+          const x1 = p.x+p.w/2, y1 = p.y+p.h, x2 = c.x+c.w/2, y2 = c.y, my = y1 + (y2-y1)/2;
+          d = `M${x1} ${y1} L${x1} ${my} L${x2} ${my} L${x2} ${y2}`;
+        }
+        const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+        path.setAttribute('d', d);
+        path.dataset.a = a; path.dataset.b = b;
+        svg.appendChild(path);
       });
     }
-    const down = [id];
-    while(down.length){
-      const cur = down.pop();
-      links.forEach(([a,b])=>{ if(a===cur && !set.has(b)){ set.add(b); down.push(b);} });
+    // linhagem: ancestrais + descendentes
+    function lineage(id){
+      const set = new Set([id]);
+      let ch = true;
+      while(ch){ ch = false;
+        links.forEach(([a,b])=>{ if (set.has(b) && !set.has(a)){ set.add(a); ch = true; } });
+      }
+      const down = [id];
+      while(down.length){
+        const cur = down.pop();
+        links.forEach(([a,b])=>{ if(a===cur && !set.has(b)){ set.add(b); down.push(b);} });
+      }
+      return set;
     }
-    return set;
+    function focusNode(id){
+      const set = lineage(id);
+      nodes.forEach(n => n.classList.toggle('dim', !set.has(n.id)));
+      svg.querySelectorAll('path').forEach(p => p.classList.toggle('dim', !(set.has(p.dataset.a) && set.has(p.dataset.b))));
+      const parents = links.filter(l=>l[1]===id).map(l=>names[l[0]]);
+      const kids = links.filter(l=>l[0]===id).map(l=>names[l[1]]);
+      info.textContent = names[id] +
+        (parents.length ? ' — vem do ' + parents.join(', ') : ' — o primeiro da família') +
+        (kids.length ? '; originou: ' + kids.join(', ') : '; sem derivados na árvore') + '.';
+    }
+    function reset(){
+      tree.querySelectorAll('.dim').forEach(e => e.classList.remove('dim'));
+      info.textContent = '';
+    }
+    nodes.forEach(n=>{
+      n.addEventListener('mouseenter', ()=>focusNode(n.id));
+      n.addEventListener('focus', ()=>focusNode(n.id));
+      n.addEventListener('click', ()=>focusNode(n.id));
+      n.addEventListener('mouseleave', reset);
+      n.addEventListener('blur', reset);
+    });
+    return draw;
   }
-
-  const names = {};
-  document.querySelectorAll('.node').forEach(n => names[n.id] = n.querySelector('b').textContent);
-
-  function focusNode(id){
-    const set = lineage(id);
-    document.querySelectorAll('.node').forEach(n => n.classList.toggle('dim', !set.has(n.id)));
-    svg.querySelectorAll('path').forEach(p => p.classList.toggle('dim', !(set.has(p.dataset.a) && set.has(p.dataset.b))));
-    const parents = links.filter(l=>l[1]===id).map(l=>names[l[0]]);
-    const kids = links.filter(l=>l[0]===id).map(l=>names[l[1]]);
-    $('info').textContent = names[id] +
-      (parents.length ? ' — vem do ' + parents.join(', ') : ' — o primeiro da família') +
-      (kids.length ? '; originou: ' + kids.join(', ') : '; sem derivados na árvore') + '.';
-  }
-  function reset(){
-    document.querySelectorAll('.dim').forEach(e => e.classList.remove('dim'));
-    $('info').textContent = '';
-  }
-
-  document.querySelectorAll('.node').forEach(n=>{
-    n.addEventListener('mouseenter', ()=>focusNode(n.id));
-    n.addEventListener('focus', ()=>focusNode(n.id));
-    n.addEventListener('click', ()=>focusNode(n.id));
-    n.addEventListener('mouseleave', reset);
-    n.addEventListener('blur', reset);
-  });
+  const drawPS = mkTree('tree','lines','info',links);
+  const drawN = mkTree('tree2','lines2','info2',NLINKS);
+  const drawAll = () => { drawPS(); drawN(); };
 
   // janela com o Sistema Operacional
   const modal = $('modal');
@@ -254,9 +326,9 @@
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && modal.classList.contains('open')) closeModal(); });
 
-  window.addEventListener('resize', draw);
-  window.addEventListener('load', draw);
-  draw();
+  window.addEventListener('resize', drawAll);
+  window.addEventListener('load', drawAll);
+  drawAll();
 </script>
 </body>
 </html>
